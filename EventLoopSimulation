@@ -1,0 +1,53 @@
+import java.util.concurrent.*;
+
+public class EventLoopSimulation {
+    // Task Queue (Simulates JS Event Loop Queue)
+    private static final BlockingQueue<Runnable> eventQueue = new LinkedBlockingQueue<>();
+
+    // Executor Service to Simulate Worker Thread for I/O Tasks
+    private static final ExecutorService workerThread = Executors.newSingleThreadExecutor();
+
+    public static void main(String[] args) {
+        // Start Event Loop Thread (Simulating JS Event Loop)
+        Thread eventLoopThread = new Thread(() -> {
+            while (true) {
+                try {
+                    Runnable task = eventQueue.take(); // Fetch task from event queue
+                    task.run(); // Execute the task
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    System.out.println("Event loop interrupted, shutting down.");
+                    break;
+                }
+            }
+        }, "EventLoopThread");
+        eventLoopThread.start();
+
+        // Simulate tasks arriving at different times
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(2000); // Simulating new tasks arriving
+                    eventQueue.offer(() -> System.out.println("Executing Non-I/O Task in Event Loop: " + Thread.currentThread().getName()));
+
+                    // Simulate I/O Task
+                    Runnable ioTask = () -> {
+                        System.out.println("Executing I/O Task in Worker Thread: " + Thread.currentThread().getName());
+                        try {
+                            Thread.sleep(3000); // Simulating I/O delay
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        // Once done, push the result back to the event queue
+                        eventQueue.offer(() -> System.out.println("I/O Task Completed, Processing Result in Event Loop: " + Thread.currentThread().getName()));
+                    };
+
+                    workerThread.submit(ioTask); // Assign I/O task to worker thread
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
+    }
+}
