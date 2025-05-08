@@ -28,79 +28,73 @@ public class TestMain{
    * @return
    */
   
-  public static <T> Map<CalendarRange, List<T>> splitListIntoConsecutiveDateByGroup( List<List<T>> lst, Function<T, Calendar> dateFunc ) {
+  import java.time.LocalDate;
+import java.util.*;
 
-    Map<CalendarRange, List<T>> ret = new HashMap<>();
-    for ( List<T> eachRowItem : lst ) {
-      
-      List<List<T>> splitIntoConsecutiveDay = ColUtil.groupByListByConsecutiveDates( eachRowItem, dateFunc );
-      for ( List<T> eachItem : splitIntoConsecutiveDay ) {
-        CalendarRange dateRange = ColUtil.getCalendarRangeForList( eachItem, dateFunc );
+public static List<Map<LocalDate, String>> splitByDays(Map<LocalDate, List<String>> dateToObjects) {
+        // Sort the dates chronologically
+        List<LocalDate> sortedDates = new ArrayList<>(dateToObjects.keySet());
+        Collections.sort(sortedDates);
 
-        List<T> oneItem = ret.get( dateRange );
-        if ( oneItem == null ) {
-          oneItem = new ArrayList<>();
-          ret.put( dateRange, oneItem );
+        // Convert each list to a queue so we can consume them one by one
+        Map<LocalDate, Queue<String>> remaining = new LinkedHashMap<>();
+        for (LocalDate date : sortedDates) {
+            remaining.put(date, new LinkedList<>(dateToObjects.get(date)));
         }
-        oneItem.addAll( eachItem );
-      }
-    }
-    return ret;
-  }
-  
-  public static <T> CalendarRange getCalendarRangeForList( List<T> lst, Function<T,Calendar> dataFunc ) {
-    Calendar startDate = null;
-    Calendar endDate = null;
-    for(T ite:lst){
-      if ( startDate == null || startDate.after( dataFunc.apply(ite) ) ) {
-        startDate = (Calendar)  (dataFunc.apply(ite)).clone();
-      }
-      if ( endDate == null || endDate.before( (dataFunc.apply(ite)) ) ) {
-        endDate = (Calendar)(dataFunc.apply(ite)).clone();
-      }
-    }
-    
-    endDate.add( Calendar.DATE, 1 );
-    return new CalendarRange( startDate, endDate );
-  }
-  
-  public static <T> List<List<T>> groupByListByConsecutiveDates(List<T> lst, Function<T,Calendar> dateFunc){
-    List<List<T>> ret = new ArrayList<>();  
-    Collections.sort(lst, new Comparator<T>(){
-      public int compare(T obj1, T obj2){
-        return dateFunc.apply(obj1).before(dateFunc.apply(obj2))?-1:1;
-      }
-    }
-    );
-    
-    int index = 0;
-    boolean stop = false;
-    while(!stop){
-      List<T> feeGroup = new ArrayList<T>();
-      for ( int i = index; i < lst.size(); i++) {
-        if(i == lst.size() - 1){
-          stop = true;
-        }
-        T obj1 = lst.get(i);
-        if(i==index){
-          feeGroup.add(obj1);
-        }else{
-          T obj2 = lst.get(i-1);
-          if( DateUtil.getDifferenceDay( dateFunc.apply(obj1),  dateFunc.apply(obj2))<=1){
-            feeGroup.add(obj1);
-          }else{
-            index = i;
-            stop=false;
-            break;
-          }
-        }
-        
-      }
-      ret.add(feeGroup);
-    }    
-    return ret;
-  }
 
+        List<Map<LocalDate, String>> columns = new ArrayList<>();
 
-  
+        while (remaining.values().stream().anyMatch(q -> !q.isEmpty())) {
+            Map<LocalDate, String> column = new LinkedHashMap<>();
+            for (LocalDate date : sortedDates) {
+                Queue<String> queue = remaining.get(date);
+                if (!queue.isEmpty()) {
+                    column.put(date, queue.poll());
+                }
+            }
+            columns.add(column);
+        }
+
+        return columns;
+    }
+
+    public static void main(String[] args) {
+        // Example 1
+        Map<LocalDate, List<String>> data1 = new LinkedHashMap<>();
+        data1.put(LocalDate.of(2024, 5, 1), Arrays.asList("obj1", "obj2", "obj3")); // day1
+        data1.put(LocalDate.of(2024, 5, 2), Arrays.asList("obj4"));                // day2
+        data1.put(LocalDate.of(2024, 5, 3), Arrays.asList("obj5", "obj6"));        // day3
+
+        System.out.println("Example 1:");
+        printResult(splitByDays(data1));
+
+        // Example 2
+        Map<LocalDate, List<String>> data2 = new LinkedHashMap<>();
+        data2.put(LocalDate.of(2024, 5, 1), Arrays.asList("obj1"));                      // day1
+        data2.put(LocalDate.of(2024, 5, 2), Arrays.asList("obj2", "obj3", "obj4"));      // day2
+        data2.put(LocalDate.of(2024, 5, 3), Arrays.asList("obj5", "obj6"));              // day3
+        data2.put(LocalDate.of(2024, 5, 4), Arrays.asList("obj7", "obj8"));              // day4
+
+        System.out.println("\nExample 2:");
+        printResult(splitByDays(data2));
+    }
+
+    private static void printResult(List<Map<LocalDate, String>> columns) {
+        int group = 1;
+        for (Map<LocalDate, String> col : columns) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Group ").append(group++).append(": ");
+            sb.append("{");
+            boolean first = true;
+            for (Map.Entry<LocalDate, String> entry : col.entrySet()) {
+                if (!first) sb.append(", ");
+                sb.append(entry.getKey()).append("=").append(entry.getValue());
+                first = false;
+            }
+            sb.append("}");
+            System.out.println(sb);
+        }
+    }
 }
+  
+
