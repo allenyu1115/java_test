@@ -2,7 +2,7 @@ public class TestMain{
 
 /**
    * Split a list into consecutive days by date ranges. 
-   * please refer to ColUtilTest. 
+   * 
    * 
    * for example: day1: obj1, obj2, obj3
    *              day2: obj4,
